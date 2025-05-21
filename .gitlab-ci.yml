@@ -1,0 +1,58 @@
+stages:
+  - build
+  - linkcheck
+  - deploy
+
+generate_doc:
+  image: klakegg/hugo:0.107.0-ext-alpine-ci
+  stage: build
+  script:
+    - hugo --environment production --minify
+  artifacts:
+    paths:
+      - public
+
+lychee_check:
+  image:
+    name: lycheeverse/lychee:latest
+    entrypoint: [""]
+  stage: linkcheck
+  dependencies:
+    - generate_doc
+  script:
+    - mkdir -p lychee
+    - lychee --verbose --exclude-mail --no-progress --output lychee/lychee-report.txt public/
+  artifacts:
+    paths:
+      - lychee/lychee-report.txt
+    when: always
+  allow_failure: true  # <--- la pipeline continue même s’il y a des liens morts
+
+lychee_slack_notify:
+  image: python:3.10
+  stage: linkcheck
+  needs:
+    - lychee_check
+  script:
+    - pip install requests
+    - python lychee/lychee_slack_bot.py lychee/lychee-report.txt
+  only:
+    - master
+  variables:
+    SLACK_WEBHOOK_URL: $SLACK_WEBHOOK_URL  # À bien définir dans Gitlab CI/CD variables
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"'
+  allow_failure: true
+
+deploy_doc:
+  image: adujardin/docker-lftp:latest
+  stage: deploy
+  script:
+    - ls public/
+    - echo "set ssl:verify-certificate no" > ~/.lftprc
+    - lftp -e "mirror --exclude api/ --exclude api_2.X/ --exclude api_3.X/ --exclude cloud/ --exclude v3/ --only-newer -R -e -p -P=10 public/ /" -u $ZED_DOC_FTP_USER,$ZED_DOC_FTP_PASSWORD $ZED_DOC_FTP_HOST
+  dependencies:
+    - generate_doc
+  only:
+    - master
+  when: manual
