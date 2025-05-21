@@ -3,6 +3,7 @@ stages:
   - linkcheck
   - deploy
 
+# 1. Générez la doc pour toute branche
 generate_doc:
   image: klakegg/hugo:0.107.0-ext-alpine-ci
   stage: build
@@ -12,6 +13,7 @@ generate_doc:
     paths:
       - public
 
+# 2. Vérification automatique des liens (lychee) après chaque build
 lychee_check:
   image:
     name: lycheeverse/lychee:latest
@@ -21,29 +23,15 @@ lychee_check:
     - generate_doc
   script:
     - mkdir -p lychee
+    # Ajoutez ici vos exclusions pour ignorer certains liens si besoin (voir doc Lychee)
     - lychee --verbose --exclude-mail --no-progress --output lychee/lychee-report.txt public/
   artifacts:
     paths:
       - lychee/lychee-report.txt
     when: always
-  allow_failure: true  #la pipeline continue même s’il y a des liens morts
+  #le job échouera si des liens morts sont détectés.
 
-lychee_slack_notify:
-  image: python:3.10
-  stage: linkcheck
-  needs:
-    - lychee_check
-  script:
-    - pip install requests
-    - python lychee/lychee_slack_bot.py lychee/lychee-report.txt
-  only:
-    - master
-  variables:
-    SLACK_WEBHOOK_URL: $SLACK_WEBHOOK_URL  #définir dans Gitlab CI/CD variables
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"'
-  allow_failure: true
-
+# 3. Déploiement manuel (uniquement sur master)
 deploy_doc:
   image: adujardin/docker-lftp:latest
   stage: deploy
@@ -56,4 +44,3 @@ deploy_doc:
   only:
     - master
   when: manual
-
