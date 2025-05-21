@@ -26,7 +26,7 @@ lychee_check:
     paths:
       - lychee/lychee-report.txt
     when: always
-  allow_failure: true  # <--- la pipeline continue même s’il y a des liens morts
+  allow_failure: true  #la pipeline continue même s’il y a des liens morts
 
 lychee_slack_notify:
   image: python:3.10
@@ -39,7 +39,7 @@ lychee_slack_notify:
   only:
     - master
   variables:
-    SLACK_WEBHOOK_URL: $SLACK_WEBHOOK_URL  # À bien définir dans Gitlab CI/CD variables
+    SLACK_WEBHOOK_URL: $SLACK_WEBHOOK_URL  #définir dans Gitlab CI/CD variables
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event"'
   allow_failure: true
@@ -56,3 +56,4 @@ deploy_doc:
   only:
     - master
   when: manual
+

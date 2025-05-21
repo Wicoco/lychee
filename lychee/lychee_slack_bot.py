@@ -12,7 +12,7 @@ def send_slack_message(webhook_url, message):
     requests.post(webhook_url, json=data)
 
 if __name__ == "__main__":
-    # Chemin passé en argument OU chemin par défaut dans lychee/
+    #chemin passé en argument ou chemin par défaut dans lychee/
     if len(sys.argv) > 1:
         report_path = sys.argv[1]
     else:
